@@ -13,3 +13,22 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@router.post("/auth/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    hashed = hash_password(user.password)
+    new_user = User(email=user.email, password=hashed)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "User created"}
+
+@router.post("/auth/login")
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+
+    if not db_user or not verify_password(user.password, db_user.password):
+        return {"error": "Invalid credentials"}
+
+    token = create_token({"sub": db_user.email})
+    return {"access_token": token}
