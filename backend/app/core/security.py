@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"])
+# pwd_context = CryptContext(schemes=["bcrypt"])
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
