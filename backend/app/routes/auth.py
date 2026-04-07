@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+from psycopg2 import IntegrityError
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
@@ -16,12 +18,16 @@ def get_db():
 
 @router.post("/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    hashed = hash_password(user.password)
-    new_user = User(email=user.email, password=hashed)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"message": "User created"}
+    try:
+        hashed = hash_password(user.password)
+        new_user = User(name=user.name, email=user.email, password=hashed)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "User created"}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Email already registered")
 
 @router.post("/auth/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
