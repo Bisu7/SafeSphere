@@ -293,7 +293,6 @@ function LoginForm({ onSwitch }) {
                     placeholder="Enter your password"
                 />
             </div>
-
             <div style={styles.forgotWrap}>
                 <span style={styles.forgotLink}>Forgot password?</span>
             </div>
