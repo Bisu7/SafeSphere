@@ -243,6 +243,8 @@ function LoginForm({ onSwitch }) {
             const data = await res.json();
             if (res.ok && data.access_token) {
                 localStorage.setItem("access_token", data.access_token);
+                localStorage.setItem("user_name", data.user.name);
+                localStorage.setItem("user_email", data.user.email);
                 setMsgType("success");
                 setMessage("Login successful! Redirecting...");
                 navigate("/");

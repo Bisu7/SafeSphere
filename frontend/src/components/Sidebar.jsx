@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
+
 const NAV_SECTIONS = [
     {
         label: "Main",
@@ -206,6 +207,10 @@ const s = {
 export default function Sidebar() {
     const location = useLocation();
 
+    const userName = localStorage.getItem("user_name") || "Guest User";
+    const userEmail = localStorage.getItem("user_email") || "[EMAIL_ADDRESS]";
+    const initials = userName.substring(0, 2).toUpperCase();
+
     const isActive = (to) =>
         to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
 
@@ -258,10 +263,10 @@ export default function Sidebar() {
                     v1.0.0
                 </div>
                 <div style={s.userRow}>
-                    <div style={s.avatar}>JD</div>
+                    <div style={s.avatar}>{initials}</div>
                     <div>
-                        <div style={s.userName}>John Doe</div>
-                        <div style={s.userEmail}>john@example.com</div>
+                        <div style={s.userName}>{userName}</div>
+                        <div style={s.userEmail}>{userEmail}</div>
                     </div>
                 </div>
             </div>
