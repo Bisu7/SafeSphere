@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ShieldIcon = () => (
     <svg width="52" height="56" viewBox="0 0 52 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -222,6 +223,8 @@ function LoginForm({ onSwitch }) {
     const [message, setMessage] = useState("");
     const [msgType, setMsgType] = useState("error");
 
+    const navigate = useNavigate();
+
     const handleLogin = async () => {
         setMessage("");
         if (!email || !password) {
@@ -242,6 +245,7 @@ function LoginForm({ onSwitch }) {
                 localStorage.setItem("access_token", data.access_token);
                 setMsgType("success");
                 setMessage("Login successful! Redirecting...");
+                navigate("/");
             } else {
                 setMsgType("error");
                 setMessage(data.error || "Invalid login credentials.");
