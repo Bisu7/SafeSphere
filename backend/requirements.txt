@@ -6,4 +6,7 @@ python-jose
 passlib[bcrypt]
 python-dotenv
 pytesseract
-
+beautifulsoup4
+requests
+pydantic
+PIL
