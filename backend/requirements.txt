@@ -9,4 +9,6 @@ pytesseract
 beautifulsoup4
 requests
 pydantic
-PIL
+openai
+pillow
+python-multipart
