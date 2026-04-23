@@ -9,6 +9,6 @@ pytesseract
 beautifulsoup4
 requests
 pydantic
-openai
 pillow
 python-multipart
+google-genai

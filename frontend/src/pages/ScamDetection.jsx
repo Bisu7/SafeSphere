@@ -39,68 +39,69 @@ const RISK = {
     High: { color: C.red, bg: C.redLt, textColor: C.redDk, bar: "#E24B4A" },
 };
 
-// ─── mock history seed ────────────────────────────────────────────────────────
-const SEED_HISTORY = [
-    {
-        id: 1,
-        preview: "http://free-iphone-claim.xyz/win?ref=928",
-        risk: "High",
-        score: 91,
-        ts: "2 min ago",
-    },
-    {
-        id: 2,
-        preview: "Congratulations! You've been selected for a $500 gift card...",
-        risk: "High",
-        score: 87,
-        ts: "14 min ago",
-    },
-    {
-        id: 3,
-        preview: "https://paypal-secure-verify.net/confirm",
-        risk: "Medium",
-        score: 63,
-        ts: "1 hr ago",
-    },
-    {
-        id: 4,
-        preview: "https://stripe.com/docs/api",
-        risk: "Low",
-        score: 4,
-        ts: "3 hr ago",
-    },
-];
+// ─── real history persistence ──────────────────────────────────────────────────
+const STORAGE_KEY = "safesphere_scan_history";
+
+function getStoredHistory() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        return [];
+    }
+}
 
 // ─── call Anthropic API ───────────────────────────────────────────────────────
-async function runScan(content) {
-    const systemPrompt = `You are a cybersecurity scam detection AI. Analyze the given content (URL, message, or email text) and return ONLY a valid JSON object with this exact shape:
-{
-  "score": <integer 0-100>,
-  "risk": "<Low|Medium|High>",
-  "explanation": "<2-3 sentence plain-English explanation of why this is safe or a scam>",
-  "flags": ["<suspicious element 1>", "<suspicious element 2>"]
-}
-Rules:
-- score 0-30 = Low risk, 31-69 = Medium, 70-100 = High
-- flags: list 1-4 specific suspicious elements found (e.g. "Fake domain mimicking PayPal", "Urgency language: 'Act now!'"). If safe, flags can be empty [].
-- Return ONLY the JSON object, no markdown, no explanation outside JSON.`;
+const API_BASE = "http://localhost:8000";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+/**
+ * Maps backend response to frontend UI format
+ */
+function mapBackendResponse(data) {
+    const riskMap = {
+        "Safe": "Low",
+        "Suspicious": "Medium",
+        "Scam": "High"
+    };
+
+    return {
+        score: Math.round(data.score * 100),
+        risk: riskMap[data.risk] || "Low",
+        explanation: data.explanation,
+        flags: data.highlights || []
+    };
+}
+
+async function scanText(content) {
+    const response = await fetch(`${API_BASE}/scan/text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 1000,
-            system: systemPrompt,
-            messages: [{ role: "user", content: `Analyze this content for scams:\n\n${content}` }],
-        }),
+        body: JSON.stringify({ content }),
     });
+    if (!response.ok) throw new Error("Text scan failed");
+    return mapBackendResponse(await response.json());
+}
 
-    if (!response.ok) throw new Error("API request failed");
-    const data = await response.json();
-    const raw = data.content?.find((b) => b.type === "text")?.text || "{}";
-    const clean = raw.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
+async function scanUrl(url) {
+    const response = await fetch(`${API_BASE}/scan/url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+    });
+    if (!response.ok) throw new Error("URL scan failed");
+    return mapBackendResponse(await response.json());
+}
+
+async function scanImage(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${API_BASE}/scan/image`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!response.ok) throw new Error("Image scan failed");
+    return mapBackendResponse(await response.json());
 }
 
 // ─── inline styles ────────────────────────────────────────────────────────────
@@ -532,45 +533,72 @@ function HistoryList({ items, onReplay }) {
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function ScamDetection() {
     const [input, setInput] = useState("");
+    const [selectedFile, setSelectedFile] = useState(null);
     const [fileName, setFileName] = useState("");
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState("");
-    const [history, setHistory] = useState(SEED_HISTORY);
+    const [history, setHistory] = useState(getStoredHistory);
     const fileRef = useRef(null);
     const nextId = useRef(10);
 
     const handleScan = useCallback(async () => {
         const content = input.trim();
-        if (!content) { setError("Please enter a URL, message, or email text to scan."); return; }
+        if (!content && !selectedFile) {
+            setError("Please enter a URL/text or upload an image to scan.");
+            return;
+        }
+
         setError("");
         setLoading(true);
         setResult(null);
+
         try {
-            const res = await runScan(content);
+            let res;
+            let displayPreview = content;
+
+            if (selectedFile) {
+                res = await scanImage(selectedFile);
+                displayPreview = `[Image] ${fileName}`;
+            } else if (content.startsWith("http://") || content.startsWith("https://")) {
+                res = await scanUrl(content);
+            } else {
+                res = await scanText(content);
+            }
+
             setResult(res);
-            setHistory((prev) => [
-                {
-                    id: nextId.current++,
-                    preview: content.length > 60 ? content.slice(0, 60) + "…" : content,
-                    risk: res.risk,
-                    score: res.score,
-                    ts: "just now",
-                },
-                ...prev,
-            ]);
+            setHistory((prev) => {
+                const newHistory = [
+                    {
+                        id: Date.now(),
+                        preview: displayPreview.length > 60 ? displayPreview.slice(0, 60) + "…" : displayPreview,
+                        risk: res.risk,
+                        score: res.score,
+                        ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    },
+                    ...prev,
+                ].slice(0, 50); // Keep last 50
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
+                return newHistory;
+            });
+            
+            // Reset file after successful scan
+            setSelectedFile(null);
+            setFileName("");
         } catch (e) {
-            setError("Scan failed — check your connection and try again.");
+            console.error(e);
+            setError("Scan failed — check backend connection or file format.");
         } finally {
             setLoading(false);
         }
-    }, [input]);
+    }, [input, selectedFile, fileName]);
 
     const handleFile = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setSelectedFile(file);
         setFileName(file.name);
-        setInput(`[Screenshot uploaded: ${file.name}] — analyzing image content for scam indicators`);
+        setInput(""); // Clear text input if file is selected
     };
 
     const handleReplay = (preview) => {

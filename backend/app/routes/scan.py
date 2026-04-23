@@ -6,11 +6,10 @@ import requests
 from bs4 import BeautifulSoup
 
 from app.services.rule_engine import analyze_text_rules
-from app.services.llm_engine import analyze_with_llm
+from app.services.llm_engine import analyze_with_llm, analyze_image_with_llm
 from app.services.aggregator import aggregate_results
 
 from PIL import Image
-import pytesseract
 import io
 
 router = APIRouter()
@@ -22,14 +21,6 @@ class UrlRequest(BaseModel):
     url: str
 
 
-def extract_text_from_image(image_bytes: bytes) -> str:
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-        text = pytesseract.image_to_string(image)
-        return text.strip()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error extracting text from image: {str(e)}")
-
 def fetch_webpage_text(url: str) -> str:
     try:
         headers = {
@@ -38,7 +29,7 @@ def fetch_webpage_text(url: str) -> str:
         response = requests.get(url, headers=headers, timeout=5)
 
         if response.status_code != 200:
-            return "Failed!"
+            return ""
         
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -50,11 +41,12 @@ def fetch_webpage_text(url: str) -> str:
         return text.strip()
 
     except Exception as e:
-        return ("Falied to fetch web page content",e)
+        print(f"Fetch Error: {str(e)}")
+        return ""
 
 def analyze_pipeline(content: str):
     if not content or len(content.strip()) == 0:
-        raise HTTPException(statues_code=400,detail="Empty content")
+        raise HTTPException(status_code=400, detail="Empty content")
     
     rule_result = analyze_text_rules(content)
     llm_result = analyze_with_llm(content)
@@ -112,13 +104,15 @@ async def scan_image(file: UploadFile = File(...)):
 
     file_bytes = await file.read()
 
-    extracted_text = extract_text_from_image(file_bytes)
+    # Use AI Vision instead of local Tesseract
+    llm_result = analyze_image_with_llm(file_bytes)
+    
+    # Run local rules on extracted text
+    extracted_text = llm_result.get("extracted_text", "")
+    rule_result = analyze_text_rules(extracted_text)
+    
+    # Aggregate results
+    final_result = aggregate_results(rule_result, llm_result)
+    final_result["extracted_text"] = extracted_text[:500]
 
-    if not extracted_text:
-        raise HTTPException(status_code=400, detail="Could not extract text from image")
-
-    result = analyze_pipeline(extracted_text)
-
-    result["extracted_text"] = extracted_text[:500]
-
-    return result
+    return final_result
