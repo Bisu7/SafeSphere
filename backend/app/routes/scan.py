@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 import re
 import requests
 from bs4 import BeautifulSoup
 
+from app.database import SessionLocal
+from app.models.scan import Scan
 from app.services.rule_engine import analyze_text_rules
 from app.services.llm_engine import analyze_with_llm, analyze_image_with_llm
 from app.services.aggregator import aggregate_results
@@ -14,11 +17,22 @@ import io
 
 router = APIRouter()
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 class TextRequest(BaseModel):
     content: str
 
 class UrlRequest(BaseModel):
     url: str
+
+class FormRequest(BaseModel):
+    domain: str
+    fields: List[str]
 
 
 def fetch_webpage_text(url: str) -> str:
@@ -54,12 +68,63 @@ def analyze_pipeline(content: str):
 
     return final_result
 
+@router.post("/extension/analyze-form")
+async def analyze_form(request: FormRequest, db: Session = Depends(get_db)):
+    # Heuristics for suspicious forms
+    suspicious_keywords = ["password", "ssn", "social security", "credit card", "cvv", "otp", "pin"]
+    
+    found_sensitive = []
+    for field in request.fields:
+        field_lower = field.lower()
+        if any(keyword in field_lower for keyword in suspicious_keywords):
+            found_sensitive.append(field)
+            
+    risk_score = 0.0
+    verdict = "Safe"
+    
+    if found_sensitive:
+        risk_score += 0.4
+        verdict = "Suspicious"
+        
+    if len(found_sensitive) > 2:
+        risk_score += 0.3
+        verdict = "Danger"
+        
+    # Save to DB
+    new_scan = Scan(
+        type="form",
+        target=request.domain,
+        score=risk_score,
+        verdict=verdict
+    )
+    db.add(new_scan)
+    db.commit()
+    
+    return {
+        "risk_score": risk_score,
+        "verdict": verdict,
+        "sensitive_fields": found_sensitive,
+        "domain": request.domain
+    }
+
 @router.post("/scan/text")
-async def scan_text(request: TextRequest):
-    return analyze_pipeline(request.content)
+async def scan_text(request: TextRequest, db: Session = Depends(get_db)):
+    result = analyze_pipeline(request.content)
+    
+    # Save to DB
+    new_scan = Scan(
+        type="text",
+        target=request.content[:100],
+        score=result.get("score", 0.5),
+        verdict=result.get("verdict", "Suspicious")
+    )
+    db.add(new_scan)
+    db.commit()
+    
+    return result
 
 @router.post("/scan/url")
-async def scan_url(request: UrlRequest):
+async def scan_url(request: UrlRequest, db: Session = Depends(get_db)):
     url = request.url
 
     if not url.startswith("http"):
@@ -95,10 +160,20 @@ async def scan_url(request: UrlRequest):
     # Step 5: Add metadata
     result["scanned_url"] = url
 
+    # Save to DB
+    new_scan = Scan(
+        type="url",
+        target=url,
+        score=result.get("score", 0.5),
+        verdict=result.get("verdict", "Suspicious")
+    )
+    db.add(new_scan)
+    db.commit()
+
     return result
 
 @router.post("/scan/image")
-async def scan_image(file: UploadFile = File(...)):
+async def scan_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
@@ -114,5 +189,15 @@ async def scan_image(file: UploadFile = File(...)):
     # Aggregate results
     final_result = aggregate_results(rule_result, llm_result)
     final_result["extracted_text"] = extracted_text[:500]
+
+    # Save to DB
+    new_scan = Scan(
+        type="image",
+        target=f"Image scan: {file.filename}",
+        score=final_result.get("score", 0.5),
+        verdict=final_result.get("verdict", "Suspicious")
+    )
+    db.add(new_scan)
+    db.commit()
 
     return final_result

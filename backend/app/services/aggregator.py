@@ -21,7 +21,7 @@ def aggregate_results(rule_result, llm_result):
 
     # Final response
     return {
-        "risk": risk,
+        "verdict": risk,
         "score": round(final_score, 2),
         "explanation": llm_result.get("explanation", ""),
         "highlights": highlights

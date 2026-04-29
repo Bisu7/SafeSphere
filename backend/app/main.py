@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, user as user_routes, scan as scan_router
+from app.routes import auth, user as user_routes, scan as scan_router, dashboard
 from app.models import user, scan, activity
 from app.database import Base, engine
 
@@ -23,3 +23,4 @@ def read_root():
 app.include_router(auth.router)
 app.include_router(user_routes.router)
 app.include_router(scan_router.router)
+app.include_router(dashboard.router)

@@ -1,6 +1,21 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card from "../components/Card";
 import RiskChart from "../components/Charts/RiskChart";
+
+// ─── helpers ───────────────────────────────────────────────────────────────
+
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return "just now";
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return date.toLocaleDateString();
+}
 
 // ─── inline icon helpers ───────────────────────────────────────────────────
 
@@ -33,16 +48,24 @@ function ScanIcon() {
 
 // ─── threat breakdown donut chart ─────────────────────────────────────────
 
-const THREAT_DATA = [
-    { label: "Phishing", count: 6, color: "#E24B4A", bg: "#FCEBEB", tc: "#791F1F" },
-    { label: "Scam sites", count: 4, color: "#BA7517", bg: "#FAEEDA", tc: "#633806" },
-    { label: "Trackers", count: 3, color: "#185FA5", bg: "#E6F1FB", tc: "#0C447C" },
-    { label: "Fake content", count: 1, color: "#639922", bg: "#EAF3DE", tc: "#27500A" },
-];
-
-function ThreatDonut() {
+function ThreatDonut({ activity }) {
     const canvasRef = useRef(null);
     const instanceRef = useRef(null);
+
+    // Group by type
+    const counts = {
+        url: activity.filter(a => a.type === 'url').length,
+        text: activity.filter(a => a.type === 'text').length,
+        image: activity.filter(a => a.type === 'image').length,
+        form: activity.filter(a => a.type === 'form').length,
+    };
+
+    const displayData = [
+        { label: "URLs", count: counts.url, color: "#185FA5" },
+        { label: "Text", count: counts.text, color: "#639922" },
+        { label: "Images", count: counts.image, color: "#BA7517" },
+        { label: "Forms", count: counts.form, color: "#E24B4A" },
+    ].filter(d => d.count > 0);
 
     useEffect(() => {
         let cancelled = false;
@@ -53,10 +76,10 @@ function ThreatDonut() {
             instanceRef.current = new window.Chart(canvasRef.current, {
                 type: "doughnut",
                 data: {
-                    labels: THREAT_DATA.map((d) => d.label),
+                    labels: displayData.map((d) => d.label),
                     datasets: [{
-                        data: THREAT_DATA.map((d) => d.count),
-                        backgroundColor: THREAT_DATA.map((d) => d.color),
+                        data: displayData.map((d) => d.count),
+                        backgroundColor: displayData.map((d) => d.color),
                         borderWidth: 0,
                         hoverOffset: 4,
                     }],
@@ -83,26 +106,21 @@ function ThreatDonut() {
             cancelled = true;
             instanceRef.current?.destroy();
         };
-    }, []);
+    }, [activity]);
 
     return (
         <div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                {THREAT_DATA.map((d) => (
+                {displayData.map((d) => (
                     <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6b7280" }}>
                         <div style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
                         {d.label} — {d.count}
                     </div>
                 ))}
+                {displayData.length === 0 && <div style={{ fontSize: 12, color: "#9ca3af" }}>No data yet</div>}
             </div>
             <div style={{ position: "relative", height: 140 }}>
-                <canvas
-                    ref={canvasRef}
-                    role="img"
-                    aria-label="Donut chart: phishing 6, scam sites 4, trackers 3, fake content 1."
-                >
-                    Threat breakdown: phishing 6, scam sites 4, trackers 3, fake content 1.
-                </canvas>
+                <canvas ref={canvasRef} />
             </div>
         </div>
     );
@@ -110,39 +128,40 @@ function ThreatDonut() {
 
 // ─── recent threats list ──────────────────────────────────────────────────
 
-const RECENT_THREATS = [
-    { dot: "#E24B4A", name: "Phishing email detected", time: "2 min ago · sender: offers@promo-deals.net", badge: "High", bg: "#FCEBEB", tc: "#791F1F" },
-    { dot: "#BA7517", name: "Suspicious site blocked", time: "18 min ago · free-iphone-2026.com", badge: "Medium", bg: "#FAEEDA", tc: "#633806" },
-    { dot: "#185FA5", name: "Tracker blocked on visit", time: "1 hr ago · news-portal.io", badge: "Low", bg: "#E6F1FB", tc: "#0C447C" },
-    { dot: "#639922", name: "Safe site verified", time: "3 hr ago · anthropic.com", badge: "Safe", bg: "#EAF3DE", tc: "#27500A" },
-];
-
-function RecentThreats() {
+function RecentActivityList({ activity }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {RECENT_THREATS.map((t) => (
-                <div
-                    key={t.name}
-                    style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "8px 10px", background: "#f8fafc", borderRadius: 8,
-                    }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.dot, flexShrink: 0 }} />
-                        <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{t.name}</div>
-                            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{t.time}</div>
+            {activity.map((t) => {
+                const isSafe = t.verdict === "Safe";
+                const dotColor = isSafe ? "#639922" : (t.score > 0.7 ? "#E24B4A" : "#BA7517");
+                const badgeBg = isSafe ? "#EAF3DE" : (t.score > 0.7 ? "#FCEBEB" : "#FAEEDA");
+                const badgeTc = isSafe ? "#27500A" : (t.score > 0.7 ? "#791F1F" : "#633806");
+
+                return (
+                    <div
+                        key={t.id}
+                        style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "8px 10px", background: "#f8fafc", borderRadius: 8,
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                            <div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{t.type.toUpperCase()} Scan: {t.target.substring(0, 30)}...</div>
+                                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{formatTimeAgo(t.time)}</div>
+                            </div>
+                        </div>
+                        <div style={{
+                            fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 20,
+                            background: badgeBg, color: badgeTc, flexShrink: 0,
+                        }}>
+                            {t.verdict}
                         </div>
                     </div>
-                    <div style={{
-                        fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 20,
-                        background: t.bg, color: t.tc, flexShrink: 0,
-                    }}>
-                        {t.badge}
-                    </div>
-                </div>
-            ))}
+                );
+            })}
+            {activity.length === 0 && <div style={{ textAlign: "center", padding: "20px", color: "#9ca3af", fontSize: "13px" }}>No recent activity</div>}
         </div>
     );
 }
@@ -186,7 +205,34 @@ function Panel({ title, hint, children }) {
 // ─── dashboard ────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
     const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    useEffect(() => {
+        fetch("http://localhost:8000/api/dashboard/stats")
+            .then(res => res.json())
+            .then(data => {
+                setStats(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch dashboard stats", err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) {
+        return <div style={{ padding: "2rem", textAlign: "center" }}>Loading Dashboard...</div>;
+    }
+
+    const dashboardData = stats || {
+        riskScore: "0%",
+        threatsDetected: 0,
+        safeActions: 0,
+        totalScans: 0,
+        recentActivity: []
+    };
 
     return (
         <div style={{ padding: "1.5rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -207,32 +253,31 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* metric cards — your existing Card component */}
+            {/* metric cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12, marginBottom: "1.25rem" }}>
-                <Card title="Risk Score" value="72%" color="text-red-500" />
-                <Card title="Threats Detected" value="14" color="text-yellow-500" />
-                <Card title="Safe Actions" value="32" color="text-green-500" />
+                <Card title="Risk Score" value={dashboardData.riskScore} color="text-red-500" />
+                <Card title="Threats Detected" value={dashboardData.threatsDetected.toString()} color="text-yellow-500" />
+                <Card title="Safe Actions" value={dashboardData.safeActions.toString()} color="text-green-500" />
             </div>
 
             {/* charts row */}
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)", gap: 12, marginBottom: "1.25rem" }}>
                 <Panel title="Risk score over time" hint="Last 7 days">
-                    {/* your existing RiskChart component */}
-                    <RiskChart />
+                    <RiskChart data={dashboardData.history} />
                 </Panel>
-                <Panel title="Threat breakdown" hint="This week">
-                    <ThreatDonut />
+                <Panel title="Scan breakdown" hint="By type">
+                    <ThreatDonut activity={dashboardData.recentActivity} />
                 </Panel>
             </div>
 
-            {/* recent threats */}
-            <Panel title="Recent threats" hint="Most recent activity">
-                <RecentThreats />
+            {/* recent activity */}
+            <Panel title="Recent activity" hint="Most recent scans">
+                <RecentActivityList activity={dashboardData.recentActivity} />
             </Panel>
 
             {/* bottom stats */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12, marginTop: "1.25rem" }}>
-                <MiniStat icon={<ScanIcon />} iconBg="#E6F1FB" label="URLs scanned" value="1,284" />
+                <MiniStat icon={<ScanIcon />} iconBg="#E6F1FB" label="Total scans" value={dashboardData.totalScans.toString()} />
                 <MiniStat icon={<ClockIcon />} iconBg="#FAEEDA" label="Avg response time" value="0.3s" />
                 <MiniStat icon={<ShieldIcon />} iconBg="#EAF3DE" label="Protection uptime" value="99.8%" />
             </div>

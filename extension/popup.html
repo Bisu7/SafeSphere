@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeSphere</title>
+    <style>
+        body {
+            width: 320px;
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+            color: #111;
+        }
+        .header {
+            background: #fff;
+            padding: 16px;
+            border-bottom: 0.5px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #185FA5;
+        }
+        .logo img {
+            width: 24px;
+            height: 24px;
+        }
+        .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #EAF3DE;
+            color: #27500A;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #639922;
+        }
+        .content {
+            padding: 16px;
+        }
+        .card {
+            background: #fff;
+            border: 0.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .card-title {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        .card-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .danger { color: #E24B4A; }
+        .warning { color: #BA7517; }
+        .success { color: #639922; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #185FA5;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #114B84;
+        }
+        .footer {
+            padding: 12px;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <img src="icons/icon48.png" alt="S">
+            SafeSphere
+        </div>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            Active
+        </div>
+    </div>
+    <div class="content">
+        <div class="card">
+            <div class="card-title">Current Page Risk</div>
+            <div id="risk-value" class="card-value success">Safe</div>
+            <div id="risk-detail" style="font-size: 11px; color: #6b7280; mt: 4px;">No threats detected on this page.</div>
+        </div>
+        <button id="scan-btn" class="btn">Scan Current Page</button>
+    </div>
+    <div class="footer">
+        SafeSphere v1.0 • Real-time Protection
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

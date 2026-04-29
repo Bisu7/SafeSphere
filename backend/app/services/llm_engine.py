@@ -31,7 +31,7 @@ Return ONLY a JSON object with this exact structure:
 }}
 """
         response = client.models.generate_content(
-            model='gemini-3-flash-preview',
+            model='gemini-1.5-flash',
             contents=prompt
         )
         
@@ -52,11 +52,16 @@ Return ONLY a JSON object with this exact structure:
         }
 
     except Exception as e:
-        print(f"Gemini Text Error: {e}")
+        error_msg = str(e)
+        explanation = "Could not fully analyze content using AI."
+        if "429" in error_msg or "quota" in error_msg.lower():
+            explanation = "Gemini AI quota exceeded. Analysis is currently limited to local rules."
+            
+        print(f"Gemini Text Error: {error_msg}")
         return {
             "risk": "Suspicious",
             "score": 0.5,
-            "explanation": "Could not fully analyze content using AI.",
+            "explanation": explanation,
             "highlights": []
         }
 
@@ -83,7 +88,7 @@ Return ONLY a JSON object with this exact structure:
 }
 """
         response = client.models.generate_content(
-            model='gemini-3-flash-preview',
+            model='gemini-1.5-flash',
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
                 prompt
@@ -107,11 +112,16 @@ Return ONLY a JSON object with this exact structure:
         }
 
     except Exception as e:
-        print(f"Gemini Image Error: {e}")
+        error_msg = str(e)
+        explanation = "Image analysis failed or service is unavailable."
+        if "429" in error_msg or "quota" in error_msg.lower():
+            explanation = "Gemini AI Vision quota exceeded. Please try again later."
+            
+        print(f"Gemini Image Error: {error_msg}")
         return {
             "extracted_text": "Could not extract text from image.",
             "risk": "Suspicious",
             "score": 0.5,
-            "explanation": "Image analysis failed or service is unavailable.",
+            "explanation": explanation,
             "highlights": []
         }

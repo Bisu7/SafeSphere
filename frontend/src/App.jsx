@@ -5,6 +5,7 @@ import ScamDetection from "./pages/ScamDetection";
 import PrivacyMonitor from "./pages/PrivacyMonitor";
 import FinancialRisk from "./pages/FinancialRisk";
 import SecurityAdvisor from "./pages/SecurityAdvisor";
+import InstallExtension from "./pages/InstallExtension";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -20,6 +21,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyMonitor />} />
             <Route path="/financial" element={<FinancialRisk />} />
             <Route path="/advisor" element={<SecurityAdvisor />} />
+            <Route path="/extension" element={<InstallExtension />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

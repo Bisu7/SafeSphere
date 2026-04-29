@@ -1,0 +1,17 @@
+/* Content Script Styles for SafeSphere */
+
+#safesphere-tooltip {
+    transition: opacity 0.2s;
+}
+
+mark.safesphere-highlight {
+    background: #E24B4A;
+    color: white;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.safesphere-form-warning {
+    box-shadow: 0 0 0 3px #E24B4A;
+    border-radius: 4px;
+}
