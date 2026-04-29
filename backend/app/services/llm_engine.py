@@ -31,7 +31,7 @@ Return ONLY a JSON object with this exact structure:
 }}
 """
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt
         )
         
@@ -88,7 +88,7 @@ Return ONLY a JSON object with this exact structure:
 }
 """
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
                 prompt
