@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, user as user_routes, scan as scan_router, dashboard
-from app.models import user, scan, activity
+from app.routes import auth, user as user_routes, scan as scan_router, dashboard, finance
+from app.models import user, scan, activity, finance as finance_model
 from app.database import Base, engine
 
 Base.metadata.create_all(bind=engine)
@@ -24,3 +24,4 @@ app.include_router(auth.router)
 app.include_router(user_routes.router)
 app.include_router(scan_router.router)
 app.include_router(dashboard.router)
+app.include_router(finance.router)

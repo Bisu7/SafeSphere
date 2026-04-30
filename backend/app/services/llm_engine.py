@@ -65,6 +65,60 @@ Return ONLY a JSON object with this exact structure:
             "highlights": []
         }
 
+def analyze_finance_with_llm(merchant: str, amount: float, category: str, description: str):
+    try:
+        prompt = f"""
+You are a financial fraud detection expert.
+Analyze the following transaction details for potential scams (UPI scams, fake payment links, suspicious descriptions, etc.):
+
+Merchant: {merchant}
+Amount: {amount}
+Category: {category}
+Description/Link: {description}
+
+Tasks:
+1. Classify: Safe / Suspicious / Fraud
+2. Fraud probability (0 to 1)
+3. Specific recommendation for the user
+4. Explanation of why it was flagged
+
+Return ONLY a JSON object with this exact structure:
+{{
+  "verdict": "...",
+  "score": 0.0,
+  "recommendation": "...",
+  "explanation": "..."
+}}
+"""
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt
+        )
+        
+        content = response.text.strip()
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        data = json.loads(content)
+
+        return {
+            "verdict": data.get("verdict", "Suspicious"),
+            "score": float(data.get("score", 0.5)),
+            "recommendation": data.get("recommendation", "Review transaction carefully."),
+            "explanation": data.get("explanation", "")
+        }
+
+    except Exception as e:
+        print(f"Gemini Finance Error: {str(e)}")
+        return {
+            "verdict": "Suspicious",
+            "score": 0.5,
+            "recommendation": "Could not verify transaction. Proceed with caution.",
+            "explanation": "AI analysis unavailable."
+        }
+
 def analyze_image_with_llm(image_bytes: bytes):
     try:
         prompt = """

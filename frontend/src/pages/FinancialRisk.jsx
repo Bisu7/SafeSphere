@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
@@ -205,19 +205,79 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function FinancialRisk() {
     const [statusFilter, setStatusFilter] = useState("All");
     const [dateFilter, setDateFilter] = useState("");
+    const [transactions, setTransactions] = useState([]);
+    const [stats, setStats] = useState({ cat_spend: [], history: [] });
+    const [loading, setLoading] = useState(true);
+    
+    // Quick Scan state
+    const [scanData, setScanData] = useState({ merchant: "", amount: "", category: "Shopping", description: "" });
+    const [scanResult, setScanResult] = useState(null);
+    const [scanning, setScanning] = useState(false);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            const [histRes, statsRes] = await Promise.all([
+                fetch("http://localhost:8000/api/finance/history"),
+                fetch("http://localhost:8000/api/finance/stats")
+            ]);
+            const hist = await histRes.json();
+            const st = await statsRes.json();
+            
+            // Format history for table
+            const formattedHist = hist.map(t => ({
+                id: t.id,
+                date: t.created_at.split("T")[0],
+                merchant: t.merchant,
+                category: t.category,
+                amount: t.amount,
+                status: t.verdict
+            }));
+            
+            setTransactions(formattedHist);
+            setStats(st);
+        } catch (err) {
+            console.error("Failed to fetch finance data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleScan = async (e) => {
+        e.preventDefault();
+        setScanning(true);
+        setScanResult(null);
+        try {
+            const res = await fetch("http://localhost:8000/api/finance/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(scanData)
+            });
+            const result = await res.json();
+            setScanResult(result);
+            fetchData(); // Refresh history
+        } catch (err) {
+            console.error("Scan failed:", err);
+        } finally {
+            setScanning(false);
+        }
+    };
 
     const filtered = useMemo(() => {
-        return ALL_TXN.filter((t) => {
+        return transactions.filter((t) => {
             const matchStatus = statusFilter === "All" || t.status === statusFilter;
             const matchDate = !dateFilter || t.date === dateFilter;
             return matchStatus && matchDate;
         });
-    }, [statusFilter, dateFilter]);
+    }, [statusFilter, dateFilter, transactions]);
 
-    const total = ALL_TXN.length;
-    const fraudCount = ALL_TXN.filter(t => t.status === "Fraud").length;
-    const suspCount = ALL_TXN.filter(t => t.status === "Suspicious").length;
-    const safeCount = ALL_TXN.filter(t => t.status === "Safe").length;
+    const total = transactions.length || 1;
+    const fraudCount = transactions.filter(t => t.status === "Fraud").length;
+    const suspCount = transactions.filter(t => t.status === "Suspicious").length;
+    const safeCount = transactions.filter(t => t.status === "Safe").length;
     const riskScore = Math.round((fraudCount * 20 + suspCount * 8) / total * 100);
     const scoreColor = riskScore > 60 ? C.red : riskScore > 30 ? C.amber : C.green;
     const scoreLabel = riskScore > 60 ? "High risk" : riskScore > 30 ? "Moderate" : "Low risk";
@@ -236,6 +296,70 @@ export default function FinancialRisk() {
                     <p className="fr-desc">
                         AI-powered transaction monitoring to detect fraud, unusual patterns, and financial exposure.
                     </p>
+                </div>
+
+                {/* Quick Scan Section */}
+                <div className="fr-card" style={{ border: `1px solid ${C.blue}`, background: C.blueLt + "22" }}>
+                    <div className="fr-card-hdr">
+                        <div className="fr-card-title" style={{ color: C.blue }}>Quick Scan Analyzer</div>
+                        <span style={{ fontSize: 11, color: C.blue }}>Detect UPI scams & fake links</span>
+                    </div>
+                    <form onSubmit={handleScan} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
+                        <input 
+                            className="fr-date-input" style={{ background: C.white }} 
+                            placeholder="Merchant / Sender" 
+                            value={scanData.merchant}
+                            onChange={e => setScanData({...scanData, merchant: e.target.value})}
+                            required
+                        />
+                        <input 
+                            className="fr-date-input" style={{ background: C.white }} 
+                            type="number" 
+                            placeholder="Amount" 
+                            value={scanData.amount}
+                            onChange={e => setScanData({...scanData, amount: e.target.value})}
+                            required
+                        />
+                        <select 
+                            className="fr-date-input" style={{ background: C.white }}
+                            value={scanData.category}
+                            onChange={e => setScanData({...scanData, category: e.target.value})}
+                        >
+                            <option>Shopping</option>
+                            <option>Transfer</option>
+                            <option>UPI</option>
+                            <option>Crypto</option>
+                            <option>Other</option>
+                        </select>
+                        <input 
+                            className="fr-date-input" style={{ background: C.white, gridColumn: "span 1" }} 
+                            placeholder="Description or UPI Link" 
+                            value={scanData.description}
+                            onChange={e => setScanData({...scanData, description: e.target.value})}
+                            required
+                        />
+                        <button 
+                            type="submit" 
+                            className="fr-filter-btn active" 
+                            style={{ height: "100%", background: C.blue, color: C.white }}
+                            disabled={scanning}
+                        >
+                            {scanning ? "Analyzing..." : "Run AI Scan"}
+                        </button>
+                    </form>
+
+                    {scanResult && (
+                        <div style={{ marginTop: 15, padding: 12, borderRadius: 8, background: scanResult.verdict === "Fraud" ? C.redLt : scanResult.verdict === "Suspicious" ? C.amberLt : C.greenLt, border: `1px solid ${scanResult.verdict === "Fraud" ? C.red : scanResult.verdict === "Suspicious" ? C.amber : C.green}` }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                                <div style={{ fontWeight: 600, color: scanResult.verdict === "Fraud" ? C.redDk : scanResult.verdict === "Suspicious" ? C.amberDk : C.greenDk }}>
+                                    Result: {scanResult.verdict} ({Math.round(scanResult.score * 100)}% risk)
+                                </div>
+                                <RiskBadge severity={scanResult.verdict === "Safe" ? "Low" : scanResult.verdict === "Suspicious" ? "Medium" : "High"} />
+                            </div>
+                            <div style={{ fontSize: 13, color: C.gray800, marginBottom: 8 }}>{scanResult.explanation}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: C.gray900 }}>Recommendation: {scanResult.recommendation}</div>
+                        </div>
+                    )}
                 </div>
 
                 {/* summary cards */}
@@ -280,7 +404,7 @@ export default function FinancialRisk() {
                             <span style={{ fontSize: 11, color: C.hint, fontFamily: mono }}>Apr 2026</span>
                         </div>
                         <ResponsiveContainer width="100%" height={200}>
-                            <LineChart data={SPENDING_TREND} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                            <LineChart data={stats.history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={C.gray200} />
                                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: C.hint, fontFamily: mono }} tickLine={false} axisLine={false} interval={2} />
                                 <YAxis tick={{ fontSize: 10, fill: C.hint, fontFamily: mono }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
@@ -305,7 +429,7 @@ export default function FinancialRisk() {
                             <span style={{ fontSize: 11, color: C.hint, fontFamily: mono }}>Total spend</span>
                         </div>
                         <ResponsiveContainer width="100%" height={200}>
-                            <BarChart data={CAT_SPEND} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} layout="vertical">
+                            <BarChart data={stats.cat_spend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke={C.gray200} horizontal={false} />
                                 <XAxis type="number" tick={{ fontSize: 10, fill: C.hint, fontFamily: mono }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
                                 <YAxis type="category" dataKey="cat" tick={{ fontSize: 10, fill: C.hint, fontFamily: mono }} tickLine={false} axisLine={false} width={72} />
