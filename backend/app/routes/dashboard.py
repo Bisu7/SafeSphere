@@ -56,3 +56,65 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         "recentActivity": formatted_recent,
         "history": history
     }
+
+@router.get("/api/privacy/stats")
+def get_privacy_stats(db: Session = Depends(get_db)):
+    # Get all scans of type url or form
+    privacy_scans = db.query(Scan).filter(Scan.type.in_(["url", "form"])).all()
+    
+    # Process trackers
+    trackers_map = {}
+    for s in privacy_scans:
+        domain = s.target
+        # Basic domain extraction if it's a full URL
+        if "://" in domain:
+            domain = domain.split("://")[1].split("/")[0]
+        
+        if domain not in trackers_map:
+            # Determine category based on domain
+            category = "Analytics"
+            if any(k in domain for k in ["ads", "pixel", "doubleclick", "criteo"]):
+                category = "Advertising"
+            elif any(k in domain for k in ["hs-", "hubspot", "crm"]):
+                category = "CRM"
+            elif any(k in domain for k in ["hotjar", "clarity"]):
+                category = "Heatmap"
+                
+            trackers_map[domain] = {
+                "id": len(trackers_map) + 1,
+                "name": domain.split(".")[0].capitalize(),
+                "domain": domain,
+                "category": category,
+                "blocked": s.verdict == "Danger"
+            }
+    
+    trackers = list(trackers_map.values())
+    
+    # Process alerts from Danger scans
+    danger_scans = db.query(Scan).filter(Scan.verdict == "Danger").order_by(Scan.created_at.desc()).limit(5).all()
+    alerts = []
+    for s in danger_scans:
+        alerts.append({
+            "id": s.id,
+            "title": f"High risk {s.type} detected",
+            "detail": f"Threat found on {s.target}",
+            "severity": "High",
+            "ts": s.created_at.strftime("%Y-%m-%d %H:%M")
+        })
+
+    # Default alerts if none found
+    if not alerts:
+        alerts = [
+            { "id": 0, "title": "No critical threats found", "detail": "SafeSphere has not detected any major data leaks for you.", "severity": "Low", "ts": "Now" }
+        ]
+
+    # Default trackers if none found
+    if not trackers:
+         trackers = [
+            { "id": 1, "name": "Google", "domain": "google.com", "category": "Analytics", "blocked": False }
+         ]
+
+    return {
+        "trackers": trackers,
+        "alerts": alerts
+    }

@@ -1,9 +1,5 @@
 /* Content Script Styles for SafeSphere */
 
-#safesphere-tooltip {
-    transition: opacity 0.2s;
-}
-
 mark.safesphere-highlight {
     background: #E24B4A;
     color: white;

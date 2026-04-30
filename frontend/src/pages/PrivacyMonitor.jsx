@@ -438,8 +438,26 @@ function TrackerChart({ trackers }) {
 
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function PrivacyMonitor() {
-    const [trackers, setTrackers] = useState(INIT_TRACKERS);
+    const [trackers, setTrackers] = useState([]);
     const [permissions, setPermissions] = useState(INIT_PERMISSIONS);
+    const [alerts, setAlerts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/api/privacy/stats");
+                const data = await res.json();
+                setTrackers(data.trackers);
+                setAlerts(data.alerts);
+            } catch (err) {
+                console.error("Failed to fetch privacy stats:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     const blocked = trackers.filter(t => t.blocked).length;
     const active = trackers.filter(t => !t.blocked).length;
@@ -447,7 +465,7 @@ export default function PrivacyMonitor() {
     const highPerms = permissions.filter(p => p.granted && p.risk === "High").length;
 
     const exposureScore = Math.round(
-        (active * 12 + granted * 8 + ALERTS.filter(a => a.severity === "High").length * 10)
+        (active * 12 + granted * 8 + alerts.filter(a => a.severity === "High").length * 10)
     );
 
     const scoreColor = exposureScore > 70 ? C.red : exposureScore > 40 ? C.amber : C.green;
@@ -463,6 +481,9 @@ export default function PrivacyMonitor() {
         <>
             <style>{CSS}</style>
             <div className="pm">
+                {loading && (
+                    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 2, background: C.blue, zIndex: 10000 }} />
+                )}
 
                 {/* header */}
                 <div className="pm-header">
@@ -605,10 +626,10 @@ export default function PrivacyMonitor() {
                             fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20,
                             background: C.redLt, color: C.redDk
                         }}>
-                            {ALERTS.filter(a => a.severity === "High").length} critical
+                            {alerts.filter(a => a.severity === "High").length} critical
                         </span>
                     </div>
-                    {ALERTS.map((a) => {
+                    {alerts.map((a) => {
                         const cfg = RISK_CFG[a.severity];
                         return (
                             <div
