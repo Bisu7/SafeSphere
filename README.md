@@ -145,7 +145,6 @@ SafeSphere is designed to run on AWS Free Tier:
 - **Database**: Managed **Amazon RDS** (PostgreSQL).
 - **CI/CD**: Every push to `main` triggers a GitHub Action to rebuild and push images to **Amazon ECR**.
 
-Detailed instructions can be found in [deployment_guide.md](deployment_guide.md).
 
 ## CI/CD Pipeline
 
