@@ -1,14 +1,5 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import './index.css'
-
-// Layout & Context
-import ThemeProvider from './components/ThemeContext'
 import MainLayout from "./pages/MainLayout";
-import ProtectedRoute from "./components/ProtectedRoute";
-
-// Pages
 import Dashboard from "./pages/Dashboard";
 import ScamDetection from "./pages/ScamDetection";
 import PrivacyMonitor from "./pages/PrivacyMonitor";
@@ -16,8 +7,9 @@ import FinancialRisk from "./pages/FinancialRisk";
 import SecurityAdvisor from "./pages/SecurityAdvisor";
 import InstallExtension from "./pages/InstallExtension";
 import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-function SafeSphereApp() {
+function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -38,10 +30,4 @@ function SafeSphereApp() {
   );
 }
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ThemeProvider>
-      <SafeSphereApp />
-    </ThemeProvider>
-  </StrictMode>,
-)
+export default App;
