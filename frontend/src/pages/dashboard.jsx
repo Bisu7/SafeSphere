@@ -210,7 +210,8 @@ export default function Dashboard() {
     const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
     useEffect(() => {
-        fetch("http://localhost:8000/api/dashboard/stats")
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+        fetch(`${API_BASE}/api/dashboard/stats`)
             .then(res => res.json())
             .then(data => {
                 setStats(data);

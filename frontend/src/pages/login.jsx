@@ -235,7 +235,8 @@ function LoginForm({ onSwitch }) {
         setMsgType("success");
         setMessage("Signing in...");
         try {
-            const res = await fetch("http://localhost:8000/auth/login", {
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+            const res = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
@@ -356,7 +357,8 @@ function RegisterForm({ onSwitch }) {
         setMsgType("success");
         setMessage("Creating your account...");
         try {
-            const res = await fetch("http://localhost:8000/auth/register", {
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+            const res = await fetch(`${API_BASE}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, password }),

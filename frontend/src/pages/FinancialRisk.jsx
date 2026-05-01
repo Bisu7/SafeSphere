@@ -220,9 +220,10 @@ export default function FinancialRisk() {
 
     const fetchData = async () => {
         try {
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
             const [histRes, statsRes] = await Promise.all([
-                fetch("http://localhost:8000/api/finance/history"),
-                fetch("http://localhost:8000/api/finance/stats")
+                fetch(`${API_BASE}/api/finance/history`),
+                fetch(`${API_BASE}/api/finance/stats`)
             ]);
             const hist = await histRes.json();
             const st = await statsRes.json();
@@ -251,7 +252,8 @@ export default function FinancialRisk() {
         setScanning(true);
         setScanResult(null);
         try {
-            const res = await fetch("http://localhost:8000/api/finance/analyze", {
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+            const res = await fetch(`${API_BASE}/api/finance/analyze`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(scanData)
