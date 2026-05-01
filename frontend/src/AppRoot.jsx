@@ -9,7 +9,7 @@ import InstallExtension from "./pages/InstallExtension";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-function App() {
+function SafeSphereApp() {
   return (
     <BrowserRouter>
       <Routes>
@@ -30,4 +30,4 @@ function App() {
   );
 }
 
-export default App;
+export default SafeSphereApp;
