@@ -12,3 +12,7 @@ pydantic
 pillow
 python-multipart
 google-genai
+scikit-learn
+pandas
+nltk
+joblib

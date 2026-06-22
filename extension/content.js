@@ -19,7 +19,7 @@ function checkForms() {
                 form.style.border = "3px solid #E24B4A";
                 form.style.position = "relative";
                 const warning = document.createElement("div");
-                warning.innerText = "⚠️ SafeSphere: High Risk Form Detected";
+                warning.innerText = " SafeSphere: High Risk Form Detected";
                 warning.style.cssText = `
                     background: #E24B4A;
                     color: white;
@@ -43,7 +43,7 @@ let lastScannedContent = "";
 
 function scanPageContent() {
     const text = document.body.innerText.substring(0, 3000);
-    
+
     // Skip if content hasn't changed
     if (text === lastScannedContent) return;
     lastScannedContent = text;
