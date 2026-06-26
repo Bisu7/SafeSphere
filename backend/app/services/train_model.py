@@ -11,10 +11,8 @@ import joblib
 import os
 import re
 
-# Download NLTK data (silent if already downloaded)
 nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)
-# Also download punkt_tab if needed for newer nltk versions
 try:
     nltk.download('punkt_tab', quiet=True)
 except:
@@ -29,11 +27,8 @@ except:
 def preprocess_text(text: str) -> str:
     """Preprocess text: lowercasing, punctuation removal, stopword removal, and stemming."""
     text = text.lower()
-    # Remove punctuation
     text = "".join([char for char in text if char not in string.punctuation])
-    # Tokenize
     tokens = nltk.word_tokenize(text)
-    # Remove stopwords and stem
     processed_tokens = [stemmer.stem(word) for word in tokens if word not in stop_words]
     return " ".join(processed_tokens)
 
@@ -62,28 +57,22 @@ def train_and_save_model(model_path: str):
     print("Downloading Kaggle SMS Spam Collection...")
     url = "https://raw.githubusercontent.com/justmarkham/pycon-2016-tutorial/master/data/sms.tsv"
     
-    # Read TSV directly into Pandas
     df = pd.read_csv(url, sep='\t', header=None, names=['label', 'message'])
     print(f"Loaded {len(df)} records. Training ML model...")
 
-    # Preprocess messages
     df['processed_message'] = df['message'].apply(preprocess_text)
 
-    # Prepare labels (spam = 1, ham = 0)
     y = df['label'].map({'spam': 1, 'ham': 0})
     X = df['processed_message']
 
-    # Create ML pipeline
     pipeline = Pipeline([
         ('tfidf', TfidfVectorizer(max_features=3000)),
         ('nb', MultinomialNB())
     ])
 
-    # Train model
     pipeline.fit(X, y)
     print("Model training complete.")
 
-    # Save model
     joblib.dump(pipeline, model_path)
     print(f"Model saved to {model_path}")
 
