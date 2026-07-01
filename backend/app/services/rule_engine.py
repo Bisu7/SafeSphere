@@ -50,7 +50,7 @@ def analyze_text_rules(text: str):
         try:
             processed = preprocess_text(text)
             probs = spam_model.predict_proba([processed])[0]
-            ml_spam_score = probs[1]
+            ml_spam_score = float(probs[1])  # cast np.float64 → Python float
             
             score += ml_spam_score * 0.7  
             

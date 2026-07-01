@@ -2,8 +2,8 @@ def aggregate_results(rule_result, llm_result):
     rule_score = rule_result.get("score", 0)
     llm_score = llm_result.get("score", 0)
 
-    # Weighted scoring
-    final_score = (rule_score * 0.4) + (llm_score * 0.6)
+    # Weighted scoring — cast to plain float to avoid np.float64 breaking PostgreSQL
+    final_score = float((rule_score * 0.4) + (llm_score * 0.6))
 
     # Risk classification
     if final_score > 0.75:
@@ -22,7 +22,7 @@ def aggregate_results(rule_result, llm_result):
     # Final response
     return {
         "verdict": risk,
-        "score": round(final_score, 2),
+        "score": round(float(final_score), 2),
         "explanation": llm_result.get("explanation", ""),
         "highlights": highlights
     }

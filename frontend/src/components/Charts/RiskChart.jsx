@@ -6,8 +6,8 @@ export default function RiskChart({ data }) {
     }
 
     return (
-        <div style={{ width: '100%', height: 200 }}>
-            <ResponsiveContainer width="100%" height="100%">
+        <div style={{ width: '100%', minHeight: 200 }}>
+            <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={data}>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
                     <YAxis hide domain={[0, 100]} />

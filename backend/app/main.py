@@ -11,7 +11,7 @@ app = FastAPI()
 import os
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-origins = [url.strip() for url in FRONTEND_URL.split(",")]
+origins = [url.strip() for url in FRONTEND_URL.split(",") if url.strip()]
 if "http://localhost:5173" not in origins:
     origins.append("http://localhost:5173")
 
